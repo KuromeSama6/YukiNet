@@ -1,5 +1,6 @@
 id: lobby
-cmd: java -jar bungeecord.jar
+cmd: java
+jarFile: spigot.jar
 args:
   - -Dfile.encoding=UTF-8
 count: 1

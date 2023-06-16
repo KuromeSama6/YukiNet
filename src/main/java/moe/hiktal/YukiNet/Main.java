@@ -1,8 +1,9 @@
 package moe.hiktal.YukiNet;
 
-import moe.icegame.coreutils.DevUtil;
-import moe.icegame.coreutils.GameUtil;
+
 import org.bukkit.configuration.file.FileConfiguration;
+
+import moe.hiktal.YukiNet.FileUtil;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -27,7 +28,7 @@ public class Main {
             try {
                 Process proc = Runtime.getRuntime().exec(new String[] {"screen", "-version"});
                 proc.waitFor();
-                if (proc.exitValue() == 1) Config.SetIsWorkingLinux(true);
+                Config.SetIsWorkingLinux(true);
 
             } catch (IOException e) {
                 Logger.Warning("GNU Screen is not installed. Features may be limited.");
@@ -48,16 +49,10 @@ public class Main {
         FileUtil.MkdirSoft(new File(cwd + "/template").toPath());
         FileUtil.MkdirSoft(new File(cwd + "/template/.global").toPath());
         FileUtil.MkdirSoft(new File(cwd + "/template/lobby").toPath());
-
-        // readme
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(cwd + "/README.md"))) {
-            writer.write(DevUtil.ReadResourceFile(Main.class, "README.md"));
-        }
-
+        
         // save config files
         FileUtil.UpdateCofig(cwd, new Main(), "/configs/proxy.yml", "/static/proxy/.yuki.yml");
         FileUtil.UpdateCofig(cwd, new Main(), "/configs/server.yml", "/template/lobby/.yuki.yml");
-        FileUtil.UpdateCofig(cwd, new Main(), "/configs/server.yml", "/template/.global/.yuki.yml");
         FileUtil.UpdateCofig(cwd, new Main(), "/config.yml");
 
         // quit
@@ -69,7 +64,7 @@ public class Main {
 
         // more directories
         Logger.Info("Clearing /live directory for new deployment.");
-        FileUtil.MkdirHard(new File(cwd + "/live").toPath());
+        FileUtil.MkdirSoft(new File(cwd + "/live").toPath());
         StartBoot();
     }
 

@@ -1,4 +1,5 @@
-cmd: java -jar bungeecord.jar
+cmd: java
+jarFile: bungeecord.jar
 args:
   - -Dfile.encoding=UTF-8
 configPath: /config.yml
