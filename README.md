@@ -68,6 +68,33 @@ When copying a template, content of directories are copied in the following orde
 
 When copying, files in later directories that have a conflicting names with files that already exist will overwrite the existing files.
 
+### Deployment and Hierarchy
+
+YukiNet supports multi-machine infrastructure for your server. YukiNet supports
+communication between multiple machines if you have a relatively large
+network.
+
+**Master and Deployment**
+
+A master is the YukiNet instance where the proxy directory is located. YukiNet, as of
+right now, supports only one proxy. In other "cloud system" solutions, this is
+oftentimes called the "core" or something similiar.
+
+A deployment is a YukiNet instance where it is on a machine other than the master.
+
+Communication is made between the master and deployments through HTTP requests. There
+is a section in `config.yml` that requires you to configure addressses and ports.
+
+### Control
+
+As of right now, YukiNet does not have support for interactive console input. Control
+commands must be sent to the master's or to a deployment's HTTP service
+endpoint. This is configured in `config.yml` in the `http.this` section.
+
+To see a list of all available endpoints, sent a `GET` bodiless request to `/help`. For example:
+
+```$ curl http://localhost:3982/help```
+
 ---
 
 ## Configuration Guide
@@ -84,6 +111,68 @@ static directory.
 
 This is an entrypoint to the Bungeecord directory. For more configurations regarding Bungeecord, edit the `.yuki.yml`
 in your bungeecord directory.
+
+`boolean isDeployment`
+
+Whether this instance of YukiNet is a deployment. If set to `false`, the this YukiNet instance
+is a master. See the previous section for explanation.
+
+#### HTTP
+
+The `http` section.
+
+`ConfigurationSection this`
+
+Defines the port that the HTTP service of this YukiNet instance will be ran on, hence
+the name "this".
+
+Node that the HTTP service for this YukiNet instance always runs on localhost,
+regardless of what is put in `this.ip`. The `this.ip` field is what is sent to the master
+(or deployments), and other YukiNet instances will use the ip in this field to connect
+to this YukiNet instance.
+
+`ConfigurationSection master`
+
+Defines the address of the master's HTTP service.
+
+If this YukiNet instance is the master, this will be ignored.
+
+#### Ident
+
+Some servers may use a custom messaging solution between Bungeecord and Spigot instances (for example, YukiMessenger, which I
+strongly suggest that you use). Such messaging solution may require a custom "id" or "ident" per 
+Spigot instance in order for the proxy to establish which messaging connection belongs to 
+which Spigot server.
+
+In this case, YukiNet allows for a custom command to be executed once the server finishes loading.
+
+To use, simply set the `enable` field in this section to `true` and drop the `YukiNetSpigot` plugin into the `.global` directory of your template.
+
+If you do not wish to use YukiNet for identing and prefer to do it manually,
+read the `.yuki-info.yml` file in the server's core jar's directory. Use the
+`server-id` field as your server name.
+
+Sample `.yuki-info.yml`:
+
+```yaml
+DO-NOT-CHANGE-THIS-FILE: DO-NOT-CHANGE-THIS-FILE
+CHANGES-ARE-NOT-SAVED: This file is regenerated each time the server starts. Any data is not saved.
+generation-time: '2023-06-22T18:26:24.025'
+generation-timestamp: 1687429584025
+server-id: lobby1
+group-id: lobby
+port: 10000
+is-static: false
+```
+
+`boolean enable`
+
+Whether to enable YukiNet ident.
+
+`String cmd`
+
+The command to be executed when identing. All occurances of `{}` are replaced with
+the server's id.
 
 ### 2. Proxy Configuration (static/proxy/.yuki.yml)
 
@@ -104,6 +193,12 @@ This is a list of arguments that gets appended to `cmd` when starting the proxy.
 This is where your proxy's `/config.yml` file is. YukiNet will read this file and change server configurations.
 
 This is defaulted to `/config.yml`.
+
+`boolean writePriorities`
+
+Whether this server will be written into the proxy's `config.yml`'s `priorities` list.
+
+This is defaulted to `true`.
 
 ### 3. Non-Static Server Configuration (template/**/.yuki.yml)
 
@@ -140,3 +235,9 @@ For example, for the template `lobby` this is set to 10000, then the first lobby
 Maximum port this template/group will use.
 
 If all ports within the [portMin, portMax] range is used, a server will not start. A warning will be generated in the console.
+
+`boolean writePriorities`
+
+Whether this server will be written into the proxy's `config.yml`'s `priorities` list.
+
+This is defaulted to `true`.

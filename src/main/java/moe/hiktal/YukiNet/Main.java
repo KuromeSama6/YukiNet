@@ -1,9 +1,11 @@
 package moe.hiktal.YukiNet;
 
 
+import moe.hiktal.YukiNet.http.HttpHost;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import moe.hiktal.YukiNet.FileUtil;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -16,6 +18,7 @@ public class Main {
     public static FileConfiguration cfg;
     public static final String cwdStr = Paths.get("").toAbsolutePath().normalize().toString();
     public static final File cwd = new File(cwdStr);
+    public static HttpHost httpHost;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Logger.Info("Starting YukiNet.");
@@ -57,10 +60,14 @@ public class Main {
 
         // quit
         if (isFirstTime) {
-            Logger.Error("Looks like this is your first time running YukiNet. Please configure the configurations and run YukiNet again.");
+            Logger.Error("Looks like this is your first time running YukiNet. Please complete configurating and run YukiNet again. Refer to REAME.md for help.");
             System.exit(0);
             return;
         }
+
+        cfg = YamlConfiguration.loadConfiguration(new File(cwd + "/config.yml"));
+        int port = cfg.getInt("http.this.port");
+        httpHost = new HttpHost(port);
 
         // more directories
         Logger.Info("Clearing /live directory for new deployment.");
@@ -71,7 +78,13 @@ public class Main {
     private static void StartBoot() throws IOException{
         Logger.Info("Starting deployment workflow.");
 
-        ServerManager.WalkAndCopyServers(cwd);
+        Logger.Info("");
+        Logger.Info("Send a GET request to http://%s:%s/help for help on commands.".formatted(cfg.getString("http.this.ip"), cfg.getInt("http.this.port")));
+        Logger.Info("For example:");
+        Logger.Info("   $ curl %s:%s/help".formatted(cfg.getString("http.this.ip"), cfg.getInt("http.this.port")));
+        Logger.Info("");
+
+        ServerManager.StartBoot();
 
     }
 

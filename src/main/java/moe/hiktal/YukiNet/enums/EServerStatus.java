@@ -6,6 +6,10 @@ public enum EServerStatus {
      */
     WAIT,
     /**
+     * Has a screen session ready but is not running yet.
+     */
+    SCREEN_READY,
+    /**
      * Up and running.
      */
     RUNNING,
@@ -17,5 +21,7 @@ public enum EServerStatus {
     public boolean IsRunning() {
         return this == RUNNING;
     }
+
+    public boolean IsAlive() {return IsRunning() || this == SCREEN_READY;}
 
 }

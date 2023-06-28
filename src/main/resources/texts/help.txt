@@ -1,0 +1,18 @@
+
+YukiNet Help
+WARNING: Do not make calls to endpoints starting with /internal/.
+
+--- GENERAL ---
+/help: Shows this page
+/list:
+    /list: Lists all servers.
+    /list/regex/<REGEX>: Lists all servers matching REGEX.
+    /liststopped: Lists all stopped servers.
+
+--- SERVER MANAGEMENT ---
+/stop/<REGEX>: Stop all servers matching REGEX and prevents them from rebooting again.
+/reboot/<REGEX>: Restarts all servers matching REGEX. Fails if restartServersOnStop in config.yml is set to true.
+/start/<REGEX>: Starts all servers matching REGEX in the stopped servers queue.
+
+See https://github.com/KuromeSama6/YukiNet/ for more.
+

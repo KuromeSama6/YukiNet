@@ -4,5 +4,4 @@ jarFile: spigot.jar
 args:
   - -Dfile.encoding=UTF-8
 count: 1
-portMin: 10000
-portMax: 12000
+writePriorities: true
