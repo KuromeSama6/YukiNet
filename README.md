@@ -1,3 +1,5 @@
+## Note - I've just finished the stable version of this and haven't update the docs. This repo is going public and docs will be updated soon.
+
 # YukiNet Documentation
 YukiNet is a simple "Cloud System" or auto-deployment for Spigot+Bungee networks.
 
