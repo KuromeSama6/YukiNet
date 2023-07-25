@@ -57,6 +57,7 @@ public class Util {
 
     public static int NextUsablePort(int start) {
         for (int i = start; i < 65535; i++) {
+            if (i == start && !CheckPortUsable(start)) System.out.println("port in use: %s".formatted(start));
             if (CheckPortUsable(start)) return i;
         }
 

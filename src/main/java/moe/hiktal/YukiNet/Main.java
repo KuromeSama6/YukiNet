@@ -19,6 +19,8 @@ public class Main {
     public static final String cwdStr = Paths.get("").toAbsolutePath().normalize().toString();
     public static final File cwd = new File(cwdStr);
     public static HttpHost httpHost;
+    public static boolean isDeployment;
+    public static int expectDeployments;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Logger.Info("Starting YukiNet.");
@@ -66,6 +68,8 @@ public class Main {
         }
 
         cfg = YamlConfiguration.loadConfiguration(new File(cwd + "/config.yml"));
+        isDeployment = cfg.getBoolean("isDeployment");
+        expectDeployments = cfg.getInt("expect");
         int port = cfg.getInt("http.this.port");
         httpHost = new HttpHost(port);
 

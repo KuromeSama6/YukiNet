@@ -2,11 +2,14 @@ package moe.hiktal.YukiNet.http;
 
 import com.sun.net.httpserver.HttpServer;
 import moe.hiktal.YukiNet.Logger;
+import moe.hiktal.YukiNet.Main;
 import moe.hiktal.YukiNet.http.StandardHttpRequest;
 import moe.hiktal.YukiNet.http.StandardHttpResponse;
 import moe.hiktal.YukiNet.enums.EStandardHttpStatus;
 //import moe.hiktal.YukiNet.http.handlers.*;
 import moe.hiktal.YukiNet.http.handlers.*;
+import moe.hiktal.YukiNet.http.handlers.internal.ClearanceRequestHandler;
+import moe.hiktal.YukiNet.http.handlers.internal.ClearanceRequestReceiveHandler;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -37,6 +40,9 @@ public class HttpHost {
             server.createContext("/stop", new ServerStopCommand("/a/:regex"));
             server.createContext("/reboot", new ServerRebootCommand("/a/:regex"));
             server.createContext("/start", new ServerStartCommand("/a/:regex"));
+
+            server.createContext("/internal/start/clearance", new ClearanceRequestHandler());
+            server.createContext("/internal/start/clearance/copy", new ClearanceRequestReceiveHandler());
 
             RegisterLightweightHandlers();
             server.bind(new InetSocketAddress(port), 0);

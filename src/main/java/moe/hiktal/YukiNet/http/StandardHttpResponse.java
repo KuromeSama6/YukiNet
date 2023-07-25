@@ -72,6 +72,10 @@ public class StandardHttpResponse {
     public static StandardHttpResponse notFoundError() {
         return new StandardHttpResponse(404, EStandardHttpStatus.RED, "not found");
     }
+
+    public static StandardHttpResponse genericError() {
+        return new StandardHttpResponse(500, EStandardHttpStatus.RED, "generic error");
+    }
     //endregion
 
     public static class SuccessfulResponse extends StandardHttpResponse {

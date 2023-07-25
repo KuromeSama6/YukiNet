@@ -29,7 +29,7 @@ public class HttpUtil {
             else return new StandardHttpResponse(code, "{}");
 
         } catch (Exception e) {
-            Bukkit.getLogger().warning(String.format("Error on HTTP Request, url = %s", url));
+            Logger.Warning(String.format("Error on HTTP Request, url = %s", url));
             e.printStackTrace();
             return StandardHttpResponse.failedResponse();
         }
