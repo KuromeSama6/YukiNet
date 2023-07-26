@@ -2,6 +2,7 @@ package moe.hiktal.YukiNet.classes;
 
 import moe.hiktal.YukiNet.*;
 import moe.hiktal.YukiNet.enums.EServerStatus;
+import oracle.jdbc.logging.annotations.Log;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.time.StopWatch;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -9,11 +10,12 @@ import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class LocalServer extends Server{
+
     public LocalServer(String groupId, int groupIndex, int port, boolean isStatic) {
         this.groupId = groupId;
         this.groupIndex = groupIndex;
@@ -74,6 +76,21 @@ public class LocalServer extends Server{
     @Override
     public void Start(Consumer<Boolean> callback) throws IOException {
         ServerManager.stoppedServers.remove(this);
+
+        // random copy
+        if (config.getBoolean("randomCopy", false)) {
+            File randomDir = new File(Main.cwd + String.format("/template/%s/.random", groupId));
+            if (!randomDir.exists()) Logger.Warning("The .random directory does not exist under %s!".formatted(randomDir));
+            else {
+                List<File> files = Arrays.stream(Objects.requireNonNull(randomDir.listFiles()))
+                        .filter(File::isDirectory)
+                        .toList();
+
+                File file = files.get(new Random().nextInt(0, files.size()));
+                FileUtil.RecursiveCopy(file, cwd);
+                Logger.Info("Copied random directory for %s".formatted(getId()));
+            }
+        }
 
         // info dump
         GetInfoDump().save(new File(cwd + "/.yuki-info.yml"));
@@ -225,6 +242,9 @@ public class LocalServer extends Server{
                 }
             }, 10000);
         }
+
+        if (force && !SystemUtils.IS_OS_WINDOWS) Runtime.getRuntime().exec(new String[] {"kill", "-SIGKILL", "%s".formatted(getPid())});
+
     }
 
 }

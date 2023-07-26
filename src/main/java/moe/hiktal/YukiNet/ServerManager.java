@@ -121,7 +121,7 @@ public class ServerManager {
             for (int i = 0; i < amount; i++) {
                 // allocate a port
                 int port = Util.NextUsablePort(nextPort);
-                Server server = new LocalServer(id, i + 1, port, false);
+                LocalServer server = new LocalServer(id, i + 1, port, false);
                 File targetDir = new File(cwd + String.format("/live/%s/%s", id, server.getId()));
                 CollectAndCopyFiles(id, cwd, targetDir);
                 dynamicServers.add(server);

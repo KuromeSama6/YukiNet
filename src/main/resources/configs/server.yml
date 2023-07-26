@@ -5,3 +5,4 @@ args:
   - -Dfile.encoding=UTF-8
 count: 1
 writePriorities: true
+randomCopy: false

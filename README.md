@@ -1,5 +1,3 @@
-## Note - I've just finished the stable version of this and haven't update the docs. This repo is going public and docs will be updated soon.
-
 # YukiNet Documentation
 YukiNet is a simple "Cloud System" or auto-deployment for Spigot+Bungee networks.
 
@@ -41,17 +39,20 @@ Templates also supports hierarchical structure. For a given `/template` director
         |- server.properties
         |- spigot.yml
     |- bedwars
+        |- .yuki.yml
         |- plugins
             |- Bedwars
                 |- arenas.yml
                 |- shop.yml
             |- Bedwars-4.0-SNAPSHOT.jar
         |- world
-    |- bedwars.0.experience_mode
+    |- bedwars_experience_mode (copyTree: [bedwars])
+        |- .yuki.yml
         |- plugins
             |- Bedwars
                 |- shop.yml (Experience mode configuration)
-    |- bedwars.1.solos
+    |- bedwars_solos
+        |- .yuki.yml (copyTree: [bedwars, bedwars_experience_mode])
         |- plugins
             |- Bedwars
                 |- arenas.yml (Solos configuration)
@@ -63,10 +64,13 @@ Templates also supports hierarchical structure. For a given `/template` director
 |- readme.md
 ```
 
-When copying a template, content of directories are copied in the following order:
+When copying a template, content of directories are copied into the `live` directory in the following order:
 1. `.global` is copied.
-2. Directory which name contains only one argument (seperated by period(.)), in this case `bedwars`, is copied.
-3. The second argument in directories' names are parsed, and are copied in ascending order. Any arguments after the second are for remarks only and are skipped. Non-integers are skipped. In this case, first `bedwars.0.experience_mode`, then `bedwars.1.solos`.
+2. Directories containing a `.yuki.yml` file are processed. Directories that do not contain said file are not processed.
+3. If the `copyTree` (`List<String>`) is present in the `.yuki.yml` file, then the files specified in that list is copied in respective order. File paths are relative to the `template` directory and includes no leading slash.
+
+    In the above example, `bedwars_solos` would copy the `bedwars` folder (which may contain, say, the Bedwars plugin), and then `bedwars_experience_mode` (which may contain configurations for experience mode bedwars, how much each resource is worth, etc.), and finally contents in `bedwars_solos` itself, which may contain spawns and bed positions for each team.
+4. The contents of the folder itself is copied.
 
 When copying, files in later directories that have a conflicting names with files that already exist will overwrite the existing files.
 
@@ -119,16 +123,36 @@ in your bungeecord directory.
 Whether this instance of YukiNet is a deployment. If set to `false`, the this YukiNet instance
 is a master. See the previous section for explanation.
 
-#### HTTP
+`boolean restartServersOnStop`
 
-The `http` section.
+Whether a server should be automatically restarted (in 10 seconds) after it stops.
+
+`int serverStartInterval`
+
+How long **in milliseconds** should YukiNet wait before starting the next server. 
+
+`int portMin`
+
+Minimum port that the servers may use. Port increments by 1 for each server automatically and skips occupied ports.
+
+For example, a value of `12000` would make the first server that starts use port `12000`, the second server `12001`, and so on. if `12002` is occupied, then it is automatically skipped, and the next server uses `12003`.
+
+`int expect`
+
+How many deployments to expect messages from before rewriting proxy config and starting the server.
+
+### HTTP
+
+The `http` section. **Configuration in this section can be safely ignored if you do not have multiple machines.**
 
 `ConfigurationSection this`
 
 Defines the port that the HTTP service of this YukiNet instance will be ran on, hence
 the name "this".
 
-Node that the HTTP service for this YukiNet instance always runs on localhost,
+For best functionality, put the public IP here. Ignore this if you do not have multiple machines.
+
+Node that the HTTP service for this YukiNet instance always runs on the wildcard IP,
 regardless of what is put in `this.ip`. The `this.ip` field is what is sent to the master
 (or deployments), and other YukiNet instances will use the ip in this field to connect
 to this YukiNet instance.
@@ -139,19 +163,14 @@ Defines the address of the master's HTTP service.
 
 If this YukiNet instance is the master, this will be ignored.
 
-#### Ident
+### Ident
 
 Some servers may use a custom messaging solution between Bungeecord and Spigot instances (for example, YukiMessenger, which I
 strongly suggest that you use). Such messaging solution may require a custom "id" or "ident" per 
 Spigot instance in order for the proxy to establish which messaging connection belongs to 
 which Spigot server.
 
-In this case, YukiNet allows for a custom command to be executed once the server finishes loading.
-
-To use, simply set the `enable` field in this section to `true` and drop the `YukiNetSpigot` plugin into the `.global` directory of your template.
-
-If you do not wish to use YukiNet for identing and prefer to do it manually,
-read the `.yuki-info.yml` file in the server's core jar's directory. Use the
+Read the `.yuki-info.yml` file in the server's core jar's directory. Use the
 `server-id` field as your server name.
 
 Sample `.yuki-info.yml`:
@@ -202,7 +221,7 @@ Whether this server will be written into the proxy's `config.yml`'s `priorities`
 
 This is defaulted to `true`.
 
-### 3. Non-Static Server Configuration (template/**/.yuki.yml)
+### 3. Non-Static Server Configuration (template/*/.yuki.yml)
 
 `String id`
 The name of this template/group. A number is appended onto the server's 
@@ -225,18 +244,13 @@ This is a list of arguments that gets appended to `cmd` when starting the server
 
 How many servers of this template is started.
 
-`int portMin`
+`boolean randomCopy`
 
-Minimum port this template/group will use
+Whether upon server start, a random folder should be copied into the working directory of the server. Best for dynamically randomizing maps.
 
-For example, for the template `lobby` this is set to 10000, then the first lobby server, `lobby1` will be running on port
-10000, the second on 10001, and so on.
+To copy, a `.random` directory must be present in the **template** directory of that group. A folder is selected by random from that directory, and copied using the same overwrite logic into the server's working directory.
 
-`int portMax`
-
-Maximum port this template/group will use.
-
-If all ports within the [portMin, portMax] range is used, a server will not start. A warning will be generated in the console.
+**Note that this operation is done every time that server starts**.
 
 `boolean writePriorities`
 
