@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class LocalServer extends Server{
+    private boolean isFirstStart = true;
 
     public LocalServer(String groupId, int groupIndex, int port, boolean isStatic) {
         this.groupId = groupId;
@@ -76,6 +77,12 @@ public class LocalServer extends Server{
     @Override
     public void Start(Consumer<Boolean> callback) throws IOException {
         ServerManager.stoppedServers.remove(this);
+
+        if (!isFirstStart) {
+            // repull from template
+            ServerManager.CollectAndCopyFiles(groupId, Main.cwd, cwd);
+        }
+        isFirstStart = false;
 
         // random copy
         if (config.getBoolean("randomCopy", false)) {
@@ -229,18 +236,7 @@ public class LocalServer extends Server{
         status = EServerStatus.STOPPED;
 
         if (ServerManager.AllowsServerAutoRestart(this)) {
-            Logger.Info("Server %s restarting in 10 seconds".formatted(id));
-            new Timer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    try {
-                        Logger.Info("Server %s restarting".formatted(id));
-                        Start();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }, 10000);
+            ServerManager.restartQueue.add(this);
         }
 
         if (force && !SystemUtils.IS_OS_WINDOWS) Runtime.getRuntime().exec(new String[] {"kill", "-SIGKILL", "%s".formatted(getPid())});

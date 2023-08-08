@@ -32,6 +32,7 @@ public class ServerManager {
     public static List<Server> dynamicServers = new ArrayList<>();
     public final static List<Server> stoppedServers = new ArrayList<>();
     public static int receivedRemote = 0;
+    public final static List<Server> restartQueue = new ArrayList<>();
 
     public static List<Server> GetAllServers() {
         List<Server> ret = new ArrayList<>();
@@ -250,6 +251,23 @@ public class ServerManager {
             }
 
         }, 0, delay);
+
+        new Timer().schedule(new TimerTask() {
+
+            @Override
+            public void run() {
+                if (restartQueue.size() == 0) return;
+                Server server = restartQueue.get(0);
+                restartQueue.remove(0);
+                Logger.Info("Server %s restarting".formatted(server.getId()));
+                try {
+                    server.Start();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+        }, 0, 10000);
     }
 
     public static void RestartServer(Server server) throws IOException{
@@ -270,7 +288,7 @@ public class ServerManager {
         cfg.set(String.format("servers.%s", id), sec);
     }
 
-    private static void CollectAndCopyFiles(String groupId, File cwd, File target) throws IOException{
+    public static void CollectAndCopyFiles(String groupId, File cwd, File target) throws IOException{
         if (!target.exists()) Files.createDirectories(target.toPath());
 
         // global files
