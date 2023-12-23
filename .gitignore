@@ -40,4 +40,5 @@ build/
 static
 template
 config.yml
+!src/main/resources/config.yml
 live
