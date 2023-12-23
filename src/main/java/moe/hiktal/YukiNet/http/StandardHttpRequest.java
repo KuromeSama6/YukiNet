@@ -3,7 +3,6 @@ package moe.hiktal.YukiNet.http;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
-import moe.icegame.coreutils.JsonSerializer;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -32,8 +31,9 @@ public class StandardHttpRequest {
             br.close();
             isr.close();
 
-            body = JsonSerializer.Deserialize(requestBody.toString());
-            if (body == null) body = new ObjectMapper().createObjectNode();
+            ObjectMapper mapper = new ObjectMapper();
+            body = mapper.readTree(requestBody.toString());
+            if (body == null) body = mapper.createObjectNode();
             urlParams = AsyncHttpHandler.ExtractUrlParams(endpoint, ext.getRequestURI());
 
         } catch (IOException e) {
