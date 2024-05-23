@@ -1,0 +1,20 @@
+context:
+  abstract: Selects servers for operation
+  usage: 'context [OPTION]... SERVER...'
+  desc:
+    - Selects servers by a value specified in SERVER and adds them to the context.
+    - For each element i in SERVER, all servers with an id that matches i will be selected.
+
+help:
+  abstract: shows help on a command
+  usage: 'help COMMAND'
+
+shutdown:
+  abstract: Shuts YukiNet down
+  usage: 'shutdown [OPTION]'
+  desc:
+    - Shuts down YukiNet after the specified time, or immediately.
+    - When shutting down, YukiNet will first perform a graceful shutdown on all connected
+    - servers (equivalent to sending ^C to in the console), then stop this YukiNet process.
+    - All players will be disconnected. It is recommended to set a message to be announced
+    - before shutdown.

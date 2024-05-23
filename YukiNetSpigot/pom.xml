@@ -60,7 +60,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>moe.hiktal.YukiNet.Main</mainClass>
+                            <mainClass>moe.hiktal.yukinet.YukiNet</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
