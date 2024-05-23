@@ -1,6 +1,5 @@
 package moe.hiktal.yukinet;
 
-
 import lombok.Getter;
 import moe.hiktal.yukinet.http.HttpHost;
 import moe.hiktal.yukinet.io.Console;
@@ -8,7 +7,6 @@ import moe.hiktal.yukinet.server.Config;
 import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.util.FileUtil;
 import moe.hiktal.yukinet.util.Util;
-import moe.icegame.coreutils.DevUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -85,7 +83,7 @@ public class YukiNet {
         cfg = YamlConfiguration.loadConfiguration(new File(cwd + "/config.yml"));
 
         try {
-            commands.loadFromString(DevUtil.ReadResourceFile(YukiNet.class, "commands.yml"));
+            commands.loadFromString(FileUtil.ReadResourceFile(YukiNet.class, "commands.yml"));
         } catch (InvalidConfigurationException e) {
             e.printStackTrace();
         }

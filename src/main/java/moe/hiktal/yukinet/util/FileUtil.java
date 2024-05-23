@@ -1,6 +1,5 @@
 package moe.hiktal.yukinet.util;
 
-import moe.icegame.coreutils.DevUtil;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -12,6 +11,7 @@ import java.nio.file.*;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Scanner;
 
 public class FileUtil {
     /**
@@ -119,7 +119,6 @@ public class FileUtil {
         }
     }
 
-
     public static void UpdateCofig(File dataFolder, Object pl, String relPath, String outPath) {
         if (!Files.exists(Paths.get(dataFolder.getAbsolutePath()), new LinkOption[0])) {
             try {
@@ -130,7 +129,7 @@ public class FileUtil {
         }
 
         if (!Files.exists(Paths.get(dataFolder.getAbsolutePath() + outPath), new LinkOption[0])) {
-            String resource = DevUtil.ReadResourceFile(pl.getClass(), relPath.substring(1));
+            String resource = ReadResourceFile(pl.getClass(), relPath.substring(1));
             Path path = Paths.get(dataFolder.getAbsolutePath() + outPath);
 
             try {
@@ -146,7 +145,7 @@ public class FileUtil {
                 YamlConfiguration current = new YamlConfiguration();
                 current.load(dataFolder + outPath);
                 YamlConfiguration newest = new YamlConfiguration();
-                newest.loadFromString(DevUtil.ReadResourceFile(pl.getClass(), relPath.substring(1)));
+                newest.loadFromString(ReadResourceFile(pl.getClass(), relPath.substring(1)));
                 Iterator var6 = newest.getKeys(true).iterator();
 
                 while(var6.hasNext()) {
@@ -170,6 +169,27 @@ public class FileUtil {
             var10.printStackTrace();
         }
 
+    }
+
+    public static String ReadResourceFile(Class cls, String path) {
+        // Get the input stream for the SQL file
+        InputStream inputStream = cls.getClassLoader().getResourceAsStream(path);
+
+        if (inputStream == null) throw new RuntimeException(String.format("Unable to find resource %s", path));
+
+        // Read the input stream into a string using a scanner
+        Scanner scanner = new Scanner(inputStream).useDelimiter("\\A");
+        String ret = scanner.hasNext() ? scanner.next() : "";
+
+        // Close the input stream and the scanner
+        try {
+            inputStream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        scanner.close();
+
+        return ret;
     }
 
 }
