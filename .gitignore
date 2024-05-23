@@ -39,6 +39,11 @@ build/
 
 static
 template
+<<<<<<< Updated upstream
 config.yml
 !src/main/resources/config.yml
+=======
+>>>>>>> Stashed changes
 live
+.yukinet-history
+.idea/misc.xml
