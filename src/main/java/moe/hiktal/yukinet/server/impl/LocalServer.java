@@ -89,7 +89,7 @@ public class LocalServer extends Server {
     public void Start(Consumer<Boolean> callback) throws IOException {
         ServerManager.stoppedServers.remove(this);
 
-        if (!isFirstStart) {
+        if (!isFirstStart && !isStatic) {
             // repull from template
             ServerManager.CollectAndCopyFiles(groupId, YukiNet.cwd, cwd);
         }
