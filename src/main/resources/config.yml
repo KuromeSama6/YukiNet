@@ -12,6 +12,9 @@ http:
     ip: 0.0.0.0
     port: -1
 
+ftp:
+  port: 8633
+
 ident:
   enable: true
   cmd: core ident {}

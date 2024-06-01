@@ -1,5 +1,8 @@
 package moe.hiktal.yukinet.util;
 
+import moe.hiktal.yukinet.YukiNet;
+import moe.hiktal.yukinet.io.FileProvider;
+import moe.hiktal.yukinet.io.IFile;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -58,7 +61,14 @@ public class FileUtil {
 
     }
 
-    public static void RecursiveCopy(File source, File target) throws IOException {
+    public static void RecursiveCopy(File abstractSource, File target) throws IOException {
+        String commonPath = abstractSource.getPath().replace(YukiNet.CWD.getPath(), "");
+
+        File source;
+        File downloadedFile = new File(YukiNet.CWD + "/download-cache" + commonPath);
+        if (downloadedFile.exists()) source = downloadedFile;
+        else source = abstractSource;
+
         if (source.isFile()) {
             Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
             return;
@@ -77,6 +87,38 @@ public class FileUtil {
                     Files.copy(file.toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
             }
+        }
+    }
+
+    public static void RecursiveCopy(FileProvider provider, String path, File target) throws IOException {
+        IFile source = provider.Acquire(path);
+        System.out.println("copy: %s -> %s (%s); ".formatted(path, target, source.getClass().getSimpleName()));
+
+        if (source.IsDirectory()) {
+            if (!target.exists()) target.mkdir();
+
+            // file is a directory
+            for (IFile file : source.ListFiles()) {
+                String name = file.GetName();
+                File newFile = new File(target.getAbsolutePath() + File.separator + name);
+
+                if (file.IsDirectory()) {
+//                    System.out.println(new File(target + File.separator + source.GetName()));
+                    RecursiveCopy(
+                            provider,
+                            path + File.separator + name,
+                            newFile
+                    );
+
+                } else {
+                    if (!newFile.exists() || newFile.length() != file.GetSize())
+                        Files.write(newFile.toPath(), file.GetContent());
+                }
+            }
+
+        } else {
+            if (!target.exists() || target.length() != source.GetSize())
+                Files.write(target.toPath(), source.GetContent());
         }
     }
 

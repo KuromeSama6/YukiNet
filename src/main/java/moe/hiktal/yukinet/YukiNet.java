@@ -2,9 +2,11 @@ package moe.hiktal.yukinet;
 
 import lombok.Getter;
 import moe.hiktal.yukinet.http.HttpHost;
-import moe.hiktal.yukinet.io.Console;
+import moe.hiktal.yukinet.service.Console;
 import moe.hiktal.yukinet.server.Config;
 import moe.hiktal.yukinet.server.ServerManager;
+import moe.hiktal.yukinet.service.FileServer;
+import moe.hiktal.yukinet.service.JobScheduler;
 import moe.hiktal.yukinet.util.FileUtil;
 import moe.hiktal.yukinet.util.Util;
 import org.apache.logging.log4j.LogManager;
@@ -14,28 +16,43 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class YukiNet {
+    public static final String CWD_STRING = Paths.get("").toAbsolutePath().normalize().toString();
+    public static final File CWD = new File(CWD_STRING);
+
+    @Getter
+    private static YukiNet instance;
+    @Getter
+    private static ServerManager serverManager;
+    @Getter
+    private static String masterIp = "0.0.0.0";
+
     @Getter
     private static final Logger logger = LogManager.getLogger(YukiNet.class);
     @Getter
-    private static Thread ioThread;
-    public static FileConfiguration cfg, commands = new YamlConfiguration();
-    public static final String cwdStr = Paths.get("").toAbsolutePath().normalize().toString();
-    public static final File cwd = new File(cwdStr);
-    public static HttpHost httpHost;
-    public static boolean isDeployment;
-    public static int expectDeployments;
-    private static final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
+    private Thread ioThread;
+    @Getter
+    private static FileConfiguration cfg, commands = new YamlConfiguration();
+    @Getter
+    private HttpHost httpHost;
+    @Getter
+    private boolean isDeployment;
+    @Getter
+    private int expectDeployments;
 
     public static void main(String[] args) throws IOException, InterruptedException {
+        new YukiNet();
+    }
+
+    public YukiNet() throws IOException, InterruptedException {
+        instance = this;
+
         logger.info("Starting YukiNet.");
 
         // system check
@@ -52,35 +69,48 @@ public class YukiNet {
                 logger.warn("GNU Screen is not installed. Features may be limited.");
             }
 
-        } else logger.warn("This operating system is not linux. Features may be limited.");
+        } else {
+            logger.error("Windows and non-Unix operating system support are no longer available. This program may only run on a Unix-based OS.");
+            System.exit(2);
+            return;
+        }
 
         StartSetup();
     }
 
-    private static void StartSetup() throws IOException{
-        logger.info(String.format("Current directory: %s", cwdStr));
-        final boolean isFirstTime = !Files.exists(Paths.get(cwdStr + "/config.yml"));
+
+    private void StartSetup() throws IOException{
+        logger.info(String.format("Current directory: %s", CWD_STRING));
+        final boolean isFirstTime = !Files.exists(Paths.get(CWD_STRING + "/config.yml"));
 
         // directories
-        FileUtil.MkdirSoft(new File(cwd + "/static").toPath());
-        FileUtil.MkdirSoft(new File(cwd + "/static/proxy").toPath());
-        FileUtil.MkdirSoft(new File(cwd + "/template").toPath());
-        FileUtil.MkdirSoft(new File(cwd + "/template/.global").toPath());
-        FileUtil.MkdirSoft(new File(cwd + "/template/lobby").toPath());
+        FileUtil.MkdirSoft(new File(CWD + "/static").toPath());
+        FileUtil.MkdirSoft(new File(CWD + "/static/proxy").toPath());
+        FileUtil.MkdirSoft(new File(CWD + "/template").toPath());
+        FileUtil.MkdirSoft(new File(CWD + "/template/.global").toPath());
 
         // save config files
-        FileUtil.UpdateCofig(cwd, new YukiNet(), "/configs/proxy.yml", "/static/proxy/.yuki.yml");
-        FileUtil.UpdateCofig(cwd, new YukiNet(), "/configs/server.yml", "/template/lobby/.yuki.yml");
-        FileUtil.UpdateCofig(cwd, new YukiNet(), "/config.yml");
+        FileUtil.UpdateCofig(CWD, this, "/configs/proxy.yml", "/static/proxy/.yuki.yml");
+        FileUtil.UpdateCofig(CWD, this, "/configs/server.yml", "/.yuki.yml");
+        FileUtil.UpdateCofig(CWD, this, "/config.yml");
+
+        // resources directory
+//        {
+//            File resources = new File(CWD + "/resources");
+//            if (!resources.exists()) resources.mkdir();
+//        }
 
         // quit
         if (isFirstTime) {
+            FileUtil.MkdirSoft(new File(CWD + "/template/lobby").toPath());
+            FileUtil.UpdateCofig(CWD, this, "/configs/server.yml", "/template/lobby/.yuki.yml");
             logger.error("Looks like this is your first time running YukiNet. Please complete configurating and run YukiNet again. Refer to REAME.md for help.");
             System.exit(0);
             return;
         }
 
-        cfg = YamlConfiguration.loadConfiguration(new File(cwd + "/config.yml"));
+        cfg = YamlConfiguration.loadConfiguration(new File(CWD + "/config.yml"));
+        masterIp = cfg.getString("http.master.ip", "0.0.0.0");
 
         try {
             commands.loadFromString(FileUtil.ReadResourceFile(YukiNet.class, "commands.yml"));
@@ -95,15 +125,28 @@ public class YukiNet {
 
         // more directories
         logger.info("Clearing /live directory for new deployment.");
-        FileUtil.MkdirSoft(new File(cwd + "/live").toPath());
+        FileUtil.MkdirSoft(new File(CWD + "/live").toPath());
 
         ioThread = new Console();
         ioThread.start();
 
+        new FileServer();
+
+        // jobs file
+        {
+            File jobsFile = new File(CWD + "/jobs.yml");
+            if (!jobsFile.exists()) {
+                Files.createFile(jobsFile.toPath());
+                Files.writeString(jobsFile.toPath(), FileUtil.ReadResourceFile(YukiNet.class, "job.yml"), StandardCharsets.UTF_8);
+            }
+            new JobScheduler(YamlConfiguration.loadConfiguration(jobsFile));
+        }
+
+
         StartBoot();
     }
 
-    private static void StartBoot() throws IOException{
+    private void StartBoot() throws IOException{
         logger.info("Starting deployment workflow.");
 
         logger.info("");
@@ -112,8 +155,31 @@ public class YukiNet {
         logger.info("   $ curl %s:%s/help".formatted(cfg.getString("http.this.ip"), cfg.getInt("http.this.port")));
         logger.info("");
 
-        ServerManager.StartBoot();
+        Start();
 
+    }
+
+    public void Start() throws IOException {
+        if (serverManager != null)
+            throw new IllegalStateException("A server manager is already created!");
+
+        serverManager = new ServerManager();
+        serverManager.Start();
+    }
+
+    public void Shutdown() throws IOException {
+        if (serverManager != null) serverManager.Shutdown();
+        System.exit(0);
+    }
+
+    public void Reboot() throws IOException {
+        if (serverManager != null) {
+            serverManager.Shutdown();
+            serverManager = null;
+        }
+        logger.info("Creating new ServerManager instance and rebooting...");
+
+        StartBoot();
     }
 
 }

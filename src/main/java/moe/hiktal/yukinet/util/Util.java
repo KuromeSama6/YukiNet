@@ -1,8 +1,8 @@
 package moe.hiktal.yukinet.util;
 
+import moe.hiktal.yukinet.YukiNet;
 import org.apache.commons.lang.SystemUtils;
 
-import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -19,16 +19,44 @@ public class Util {
         String[] command = { "/bin/sh", "-c", "screen -list | grep " + name };
         Process process = Runtime.getRuntime().exec(command);
 
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            if (line.contains(name)) {
-                String[] parts = line.trim().split("\\.");
-                return Integer.parseInt(parts[0]);
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains(name)) {
+                    String[] parts = line.trim().split("\\.");
+                    return Integer.parseInt(parts[0]);
+                }
             }
         }
         return -1; // session not found
     }
+
+    public static int GetPidByPort(int port) throws IOException {
+        Process process = new ProcessBuilder(
+                "lsof", "-i", ":%d".formatted(port)
+        ).start();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.contains("(LISTEN)")) {
+                    String[] args = line.split("\\s+");
+                    return Integer.parseInt(args[1]);
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    public static boolean KillProcess(int pid) throws IOException, InterruptedException {
+        Process process = new ProcessBuilder(
+                "kill", "%d".formatted(pid)
+        ).start();
+        return process.waitFor() == 0;
+    }
+
 
     public static String FormatMilliseconds(long millis) {
         return String.format("%02d:%02d:%02d",
@@ -49,10 +77,33 @@ public class Util {
         }
     }
 
-    public static int NextUsablePort(int start) {
+    public static int AllocatePort(int start) {
         for (int i = start; i < 65535; i++) {
-            if (i == start && !CheckPortUsable(start)) System.out.println("port in use: %s".formatted(start));
-            if (CheckPortUsable(start)) return i;
+            boolean usable = CheckPortUsable(start);
+
+            if (i == start && !usable) {
+                YukiNet.getLogger().warn("Port %d is occupied. Attempting to kill what is running on that port.");
+                try {
+                    int pid = GetPidByPort(i);
+                    if (pid == -1) {
+                        YukiNet.getLogger().warn("Could not get what is on that port. Skipping.");
+                        continue;
+                    }
+
+                    boolean res = KillProcess(pid);
+                    if (!res) {
+                        YukiNet.getLogger().warn("Unable to kill that process. Skipping.");
+                        continue;
+                    }
+
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+                continue;
+            }
+
+            if (CheckPortUsable(i)) return i;
         }
 
         return -1;

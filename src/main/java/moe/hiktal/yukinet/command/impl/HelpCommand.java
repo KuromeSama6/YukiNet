@@ -3,7 +3,7 @@ package moe.hiktal.yukinet.command.impl;
 import moe.hiktal.yukinet.command.Command;
 import moe.hiktal.yukinet.command.CommandHandler;
 import moe.hiktal.yukinet.command.NOPParameter;
-import moe.hiktal.yukinet.io.Console;
+import moe.hiktal.yukinet.service.Console;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 @CommandHandler
 public class HelpCommand extends Command<NOPParameter> {
     public HelpCommand() {
-        super("help", "?");
+        super("help", "?", "man");
     }
 
     @Override

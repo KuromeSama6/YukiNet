@@ -2,7 +2,6 @@ package moe.hiktal.yukinet.command;
 
 import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.command.impl.ContextCommand;
-import moe.hiktal.yukinet.io.Console;
 import moe.hiktal.yukinet.server.Server;
 
 import java.util.List;
@@ -23,10 +22,10 @@ public abstract class CommandWithContext<T> extends Command<T>{
         int count = 0;
         for (var server : context) {
             try {
-               boolean res = ExecuteOnServer(server, params);
+               boolean res = ExecuteOnServer(server, params, args);
                if (res) ++count;
-               YukiNet.getLogger().info("%s/%s - %s".formatted(
-                       server.getGroupId(), server.getId(),
+               YukiNet.getLogger().info("%s/%s (%s) - %s".formatted(
+                       server.getGroupId(), server.getId(), server.getStatus(),
                        res ? "OK" : "FAILED"
                ));
             } catch (Exception e) {
@@ -40,5 +39,5 @@ public abstract class CommandWithContext<T> extends Command<T>{
         YukiNet.getLogger().info("Execution on %d/%d servers successful.".formatted(count, context.size()));
     }
 
-    protected abstract boolean ExecuteOnServer(Server server, T params);
+    protected abstract boolean ExecuteOnServer(Server server, T params, List<String> args);
 }

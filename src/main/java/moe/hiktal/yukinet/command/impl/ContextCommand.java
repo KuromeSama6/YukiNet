@@ -2,6 +2,7 @@ package moe.hiktal.yukinet.command.impl;
 
 import com.beust.jcommander.Parameter;
 import lombok.Getter;
+import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.command.Command;
 import moe.hiktal.yukinet.command.CommandHandler;
 import moe.hiktal.yukinet.server.Server;
@@ -43,7 +44,7 @@ public class ContextCommand extends Command<ContextCommand.Params> {
         // select ccontexts
         for (String regex : params.ids) {
             context.addAll(
-                    ServerManager.GetAllServers().stream()
+                    YukiNet.getServerManager().GetAllServers().stream()
                             .filter(c -> c.getId().matches(regex))
                             .filter(c -> !context.contains(c))
                             .toList()

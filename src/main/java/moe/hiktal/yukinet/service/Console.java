@@ -1,4 +1,4 @@
-package moe.hiktal.yukinet.io;
+package moe.hiktal.yukinet.service;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -9,6 +9,7 @@ import moe.hiktal.yukinet.command.Command;
 import moe.hiktal.yukinet.command.impl.ContextCommand;
 import moe.hiktal.yukinet.command.CommandHandler;
 import moe.hiktal.yukinet.server.Server;
+import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.util.Util;
 import org.jline.reader.*;
 import org.jline.reader.impl.DefaultParser;
@@ -18,9 +19,6 @@ import org.jline.terminal.TerminalBuilder;
 import org.reflections.Reflections;
 
 import java.io.IOException;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.security.InvalidParameterException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -107,36 +105,17 @@ public class Console extends Thread {
                     history.add(input);
 
                     if (input.isBlank()) continue;
-                    List<String> args = Arrays.asList(input.split(" "));
-                    String label = args.get(0);
-                    Command<?> cmd = GetCommand(label);
-
-                    if (cmd != null) {
-                        try {
-                            Object parameter = cmd.CreateParameterObject();
-                            List<String> finalArgs = args.subList(1, args.size());
-                            JCommander jCommander = JCommander.newBuilder()
-                                    .addObject(parameter)
-                                    .build();
-                            if (args.size() > 1) jCommander.parse(finalArgs.toArray(new String[0]));
-                            cmd.Execute(parameter, finalArgs);
-
-                        } catch (ParameterException e) {
-                            YukiNet.getLogger().warn("Bad command: %s".formatted(e.getMessage()));
-
-                        } catch (Exception e) {
-                            YukiNet.getLogger().error("\nError while parsing command:");
-                            e.printStackTrace();
-                        }
-
-                    } else YukiNet.getLogger().warn("command not found: %s".formatted(label));
-
-                } catch (UserInterruptException | EndOfFileException e) {
+                    ExecuteCommand(input);
+                } catch (UserInterruptException e) {
                     if (!userInterruptionWarned) {
-                        YukiNet.getLogger().warn("Please do use that to stop YukiNet. Use the 'shutdown' command instead.");
+                        YukiNet.getLogger().warn("Please do use that to stop YukiNet. Use the 'shutdown' command, or send Ctrl+D for a forced shutdown.");
                         userInterruptionWarned = true;
                     }
 
+                } catch (EndOfFileException e) {
+                    if (YukiNet.getServerManager().isShuttingDown()) return;
+                    Console.getInstance().setUserInterruptionWarned(true);
+                    YukiNet.getInstance().Shutdown();
                 } catch (Exception e) {
 
                 }
@@ -147,5 +126,31 @@ public class Console extends Thread {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void ExecuteCommand(String input) throws Exception {
+        List<String> args = Arrays.asList(input.split(" "));
+        String label = args.get(0);
+        Command<?> cmd = GetCommand(label);
+
+        if (cmd != null) {
+            try {
+                Object parameter = cmd.CreateParameterObject();
+                List<String> finalArgs = args.subList(1, args.size());
+                JCommander jCommander = JCommander.newBuilder()
+                        .addObject(parameter)
+                        .build();
+                if (args.size() > 1) jCommander.parse(finalArgs.toArray(new String[0]));
+                cmd.Execute(parameter, finalArgs);
+
+            } catch (ParameterException e) {
+                YukiNet.getLogger().warn("Bad command: %s".formatted(e.getMessage()));
+
+            } catch (Exception e) {
+                YukiNet.getLogger().error("\nError while executing command:");
+                e.printStackTrace();
+            }
+
+        } else YukiNet.getLogger().warn("command not found: %s".formatted(label));
     }
 }

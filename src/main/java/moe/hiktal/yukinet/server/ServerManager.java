@@ -1,17 +1,18 @@
 package moe.hiktal.yukinet.server;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import lombok.Getter;
+import lombok.Setter;
 import moe.hiktal.yukinet.YukiNet;
+import moe.hiktal.yukinet.io.FileDownloader;
+import moe.hiktal.yukinet.io.FileProvider;
 import moe.hiktal.yukinet.server.impl.Deployment;
 import moe.hiktal.yukinet.server.impl.LocalServer;
 import moe.hiktal.yukinet.http.EndpointHttpResponse;
 import moe.hiktal.yukinet.util.FileUtil;
 import moe.hiktal.yukinet.util.HttpUtil;
 import moe.hiktal.yukinet.util.Util;
-import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
@@ -22,53 +23,66 @@ import java.util.*;
 
 public class ServerManager {
     @Getter
-    private static boolean isShuttingDown;
-    public static Server proxy;
-    public static List<Server> staticServers = new ArrayList<>();
-    public static List<Deployment> deployments = new ArrayList<>();
-    public static List<Server> dynamicServers = new ArrayList<>();
-    public final static List<Server> stoppedServers = new ArrayList<>();
-    public static int receivedRemote = 0;
-    public final static List<Server> restartQueue = new ArrayList<>();
-    public static boolean isRunning;
+    private boolean isShuttingDown;
+    @Getter
+    private Server proxy;
+    private List<Server> staticServers = new ArrayList<>();
+    private List<Deployment> deployments = new ArrayList<>();
+    @Getter
+    private List<Server> dynamicServers = new ArrayList<>();
+    @Getter
+    private final List<Server> stoppedServers = new ArrayList<>();
+    @Getter @Setter
+    private int receivedRemote = 0;
+    @Getter
+    private final List<Server> restartQueue = new ArrayList<>();
+    private boolean isRunning;
+    private FileProvider fileProvider;
 
-    public static List<Server> GetAllServers() {
+    public List<Server> GetAllServers() {
         List<Server> ret = new ArrayList<>();
         ret.addAll(staticServers);
         ret.addAll(dynamicServers);
         return ret;
     }
 
-    public static void StartBoot() throws IOException {
-        WalkAndCopyServers(YukiNet.cwd);
+    public void Start() throws IOException {
+        // download
+//        YukiNet.getLogger().info("Download files from core");
+//        FileDownloader downloader = new FileDownloader(this);
+//        downloader.Download();
+        fileProvider = new FileProvider(this);
 
-        if (!YukiNet.isDeployment && YukiNet.expectDeployments > 0) {
-            YukiNet.getLogger().info("Waiting for %s deployments to message us...".formatted(YukiNet.expectDeployments));
+        // files
+        WalkAndCopyServers(YukiNet.CWD);
+
+        // clearance
+        if (!YukiNet.getInstance().isDeployment() && YukiNet.getInstance().getExpectDeployments() > 0) {
+            YukiNet.getLogger().info("Waiting for %s deployments to message us...".formatted(YukiNet.getInstance().getExpectDeployments()));
             return;
         }
 
-        if (YukiNet.isDeployment) {
-            String thisIp = YukiNet.cfg.getString("http.this.ip");
-            int thisPort = YukiNet.cfg.getInt("http.master.port", 3982);
-            String ip = YukiNet.cfg.getString("http.master.ip", "0.0.0.0");
-            int port = YukiNet.cfg.getInt("http.master.port", 3982);
+        if (YukiNet.getInstance().isDeployment()) {
+            String thisIp = YukiNet.getCfg().getString("http.this.ip");
+            int thisPort = YukiNet.getCfg().getInt("http.master.port", 3982);
+            String ip = YukiNet.getCfg().getString("http.master.ip", "0.0.0.0");
+            int port = YukiNet.getCfg().getInt("http.master.port", 3982);
             YukiNet.getLogger().info("Sending our info to master @ %s:%s".formatted(ip, port));
 
             // construct our json object
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectNode ret = mapper.createObjectNode();
+            JsonObject ret = new JsonObject();
 
-            ret.put("ip", thisIp);
-            ret.put("port", thisPort);
+            ret.addProperty("ip", thisIp);
+            ret.addProperty("port", thisPort);
 
-            ArrayNode servers = mapper.createArrayNode();
+            JsonArray servers = new JsonArray();
             for (Server server : GetAllServers()) {
-                ObjectNode pth = mapper.createObjectNode();
-                pth.put("id", server.getId());
-                pth.put("port", server.getPort());
+                JsonObject pth = new JsonObject();
+                pth.addProperty("id", server.getId());
+                pth.addProperty("port", server.getPort());
                 servers.add(pth);
             }
-            ret.set("servers", servers);
+            ret.add("servers", servers);
 
             EndpointHttpResponse res = HttpUtil.HttpPostSync("http://%s:%s/internal/start/clearance".formatted(ip, port), ret.toString());
             if (!res.suc) YukiNet.getLogger().error("Master rejected our clearance. This deployment will not start.");
@@ -76,13 +90,14 @@ public class ServerManager {
             return;
         }
 
+        // bungeecord
         RewriteBungeecordConfig();
     }
 
-    public static void WalkAndCopyServers(File cwd) throws IOException {
+    public void WalkAndCopyServers(File cwd) throws IOException {
         YukiNet.getLogger().info("Copying statics...");
 
-        int nextPort = YukiNet.cfg.getInt("portMin", 12000);
+        int nextPort = YukiNet.getCfg().getInt("portMin", 12000);
         File[] statics = Objects.requireNonNull(new File(cwd + "/static").listFiles());
         for (File dir : statics) {
             if (!dir.isDirectory() || dir.getName().startsWith(".") || dir.getName().equals("proxy")) continue;
@@ -94,7 +109,7 @@ public class ServerManager {
 
             YamlConfiguration cfg = YamlConfiguration.loadConfiguration(new File(dir + "/.yuki.yml"));
             String id = cfg.getString("id");
-            int port = Util.NextUsablePort(nextPort);
+            int port = Util.AllocatePort(nextPort);
             Server server = new LocalServer(id, 0, port, true);
             staticServers.add(server);
             server.SetProxy(dir);
@@ -119,10 +134,12 @@ public class ServerManager {
             String id = cfg.getString("id");//
             for (int i = 0; i < amount; i++) {
                 // allocate a port
-                int port = Util.NextUsablePort(nextPort);
+                int port = Util.AllocatePort(nextPort);
                 LocalServer server = new LocalServer(id, i + 1, port, false);
                 File targetDir = new File(cwd + String.format("/live/%s/%s", id, server.getId()));
+
                 CollectAndCopyFiles(id, cwd, targetDir);
+
                 dynamicServers.add(server);
                 server.SetCwd(cwd);
 
@@ -133,18 +150,18 @@ public class ServerManager {
 
     }
 
-    public static boolean AllowingServerReboot() {
-        return !isShuttingDown && YukiNet.cfg.getBoolean("restartServersOnStop");
+    public boolean AllowingServerReboot() {
+        return !isShuttingDown &&YukiNet.getCfg().getBoolean("restartServersOnStop");
     }
 
-    public static boolean AllowsServerAutoRestart(Server server) {
-        return !isShuttingDown && !stoppedServers.contains(server) && GetAllServers().contains(server) && YukiNet.cfg.getBoolean("restartServersOnStop");
+    public boolean AllowsServerAutoRestart(Server server) {
+        return !isShuttingDown && !stoppedServers.contains(server) && GetAllServers().contains(server) &&YukiNet.getCfg().getBoolean("restartServersOnStop");
     }
 
-    public static void RewriteBungeecordConfig() throws IOException{
+    public void RewriteBungeecordConfig() throws IOException{
         YukiNet.getLogger().info("Rewriting BungeeCord config...");
 
-        File cwd = new File(YukiNet.cwd + YukiNet.cfg.getString("proxyDir"));
+        File cwd = new File(YukiNet.CWD +YukiNet.getCfg().getString("proxyDir"));
         if (!cwd.exists()) {
             YukiNet.getLogger().error(String.format("Proxy directory (%s) not found! Aborting startup.", cwd));
             return;
@@ -206,11 +223,11 @@ public class ServerManager {
 
     }
 
-    public static void StartAllServers() throws IOException{
+    public void StartAllServers() throws IOException{
         isRunning = true;
         final List<Server> servers = GetAllServers().stream().filter(c -> c instanceof LocalServer).toList();
         final DecimalFormat formatter = new DecimalFormat("#.##");
-        int delay = YukiNet.cfg.getInt("serverStartInterval", 30000);
+        int delay =YukiNet.getCfg().getInt("serverStartInterval", 30000);
         final Timer timer = new Timer();
 
         YukiNet.getLogger().info("Starting 1 server every %s seconds.".formatted(formatter.format((double)delay / 1000.0)));
@@ -263,7 +280,7 @@ public class ServerManager {
         }, 0, 10000);
     }
 
-    public static void RestartServer(Server server) throws IOException{
+    public void RestartServer(Server server) throws IOException{
         dynamicServers.remove(server);
         server.Interrupt(true);
 
@@ -272,7 +289,7 @@ public class ServerManager {
         newServer.Start();
     }
 
-    private static void WriteOneServer(YamlConfiguration cfg, Server server) {
+    private void WriteOneServer(YamlConfiguration cfg, Server server) {
         String id = server.getId();
         YamlConfiguration sec = new YamlConfiguration();
         sec.set("motd", "a YukiNet server");
@@ -281,7 +298,7 @@ public class ServerManager {
         cfg.set(String.format("servers.%s", id), sec);
     }
 
-    public static void CollectAndCopyFiles(String groupId, File cwd, File target) throws IOException{
+    public void CollectAndCopyFiles(String groupId, File cwd, File target) throws IOException{
         if (!target.exists()) Files.createDirectories(target.toPath());
 
         // global files
@@ -293,30 +310,25 @@ public class ServerManager {
         List<String> copyBefore = cfg.getStringList("copyTree");
         for (String path : copyBefore) {
             YukiNet.getLogger().info("Copying tree %s".formatted(path));
-            File dir = new File(cwd + "/template/" + path);
-            if (!dir.exists()) {
-                YukiNet.getLogger().warn("Subfolder %s not found! Skipping.".formatted(dir.getAbsolutePath()));
-                continue;
-            }
 
-            FileUtil.RecursiveCopy(dir, target);
+            FileUtil.RecursiveCopy(fileProvider, "/template/" + path, target);
         }
 
         // group files
-        FileUtil.RecursiveCopy(new File(cwd + "/template/" + groupId), target);
+        FileUtil.RecursiveCopy(fileProvider, "/template/" + groupId, target);
 
     }
 
-    public static boolean AddDeployment(Deployment deployment) {
+    public boolean AddDeployment(Deployment deployment) {
 
         deployments.add(deployment);
         return true;
     }
 
-    public static void Shutdown() throws IOException{
+    public void Shutdown() throws IOException{
         YukiNet.getLogger().info("Gracefully shutting down servers...");
         isShuttingDown = true;
-        YukiNet.getIoThread().interrupt();
+        YukiNet.getInstance().getIoThread().interrupt();
 
         if (isRunning) {
             if (proxy != null) proxy.Interrupt();
@@ -327,29 +339,26 @@ public class ServerManager {
             YukiNet.getLogger().info("Allowing 10 seconds for servers to shut down themselves before forcefully shutting down - DO NOT SEND ^C");
             YukiNet.getLogger().info("DO NOT SEND ^C!!!!!!");
 
-            try {
-                int counter = 0;
-                while (counter < 10000) {
-                    counter += 100;
+            int counter = 0;
+            while (counter < 10000) {
+                counter += 100;
+                try {
                     Thread.sleep(100);
-                    if (ServerManager.GetAllServers().stream().noneMatch(Server::IsAlive)) break;
+                } catch (InterruptedException e) {
                 }
+                if (GetAllServers().stream().noneMatch(Server::IsAlive)) break;
+            }
 
-                List<Server> survivers = ServerManager.GetAllServers().stream().filter(Server::IsAlive).toList();
-                if (survivers.size() > 0) {
-                    YukiNet.getLogger().warn("Killing %s survivers...".formatted(survivers.size()));
-                    for (Server server : survivers) {
-                        server.Interrupt(true);
-                    }
+            List<Server> survivers = GetAllServers().stream().filter(Server::IsAlive).toList();
+            if (survivers.size() > 0) {
+                YukiNet.getLogger().warn("Killing %s survivers...".formatted(survivers.size()));
+                for (Server server : survivers) {
+                    server.Interrupt(true);
                 }
-
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
 
-        YukiNet.getLogger().info("Shutdown done, goodbye.");
-        System.exit(0);
+        YukiNet.getLogger().info("ServerManager shutdown complete.");
     }
 
 }

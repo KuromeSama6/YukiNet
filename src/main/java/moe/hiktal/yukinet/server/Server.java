@@ -67,7 +67,7 @@ public abstract class Server {
     public void SendInput(String input) throws IOException {
         if (status != EServerStatus.RUNNING) return;
         Runtime.getRuntime().exec(new String[] {
-                "screen", "-S", GetScreenSessionName(), "-X", "stuff", "\"%s\"".formatted(input)
+                "screen", "-S", GetScreenSessionName(), "-X", "stuff", "%s\n".formatted(input)
         });
     }
 

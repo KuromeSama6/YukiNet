@@ -1,54 +1,47 @@
 package moe.hiktal.yukinet.http;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import moe.hiktal.yukinet.enums.EStandardHttpStatus;
 
 public class StandardHttpResponse {
     public EStandardHttpStatus status;
     public String message;
-    @JsonIgnore public int statusCode = 200;
-    @JsonIgnore public ObjectNode data;
-    @JsonIgnore public String rawContent;
+    public transient int statusCode = 200;
+    public transient JsonObject data;
+    public transient String rawContent;
 
     public StandardHttpResponse(int statusCode, EStandardHttpStatus status, String message) {
         this.status = status;
         this.message = message;
         this.statusCode = statusCode;
 
-        ObjectMapper mapper = new ObjectMapper();
-        data = mapper.valueToTree(this);
+        data = new Gson().toJsonTree(this).getAsJsonObject();
 
-        data.put("status", status.toString().toLowerCase());
-        data.put("message", message);
+        data.addProperty("status", status.toString().toLowerCase());
+        data.addProperty("message", message);
     }
 
-    public StandardHttpResponse(int statusCode, EStandardHttpStatus status, String message, ObjectNode node) {
+    public StandardHttpResponse(int statusCode, EStandardHttpStatus status, String message, JsonObject node) {
         this.status = status;
         this.message = message;
         this.statusCode = statusCode;
 
         data = node;
 
-        data.put("status", status.toString().toLowerCase());
-        data.put("message", message);
+        data.addProperty("status", status.toString().toLowerCase());
+        data.addProperty("message", message);
     }
 
     public StandardHttpResponse(EStandardHttpStatus status, String message) {
         this(200, status, message);
     }
-    public StandardHttpResponse(EStandardHttpStatus status, String message, ObjectNode node) {
+    public StandardHttpResponse(EStandardHttpStatus status, String message, JsonObject node) {
         this(200, status, message, node);
     }
 
     public String Dump() {
-        try {
-            return rawContent == null ? new ObjectMapper().writeValueAsString(data) : rawContent;
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return rawContent == null ? data.toString() : rawContent;
     }
 
     public StandardHttpResponse SetRawContent(String message) {
@@ -83,7 +76,7 @@ public class StandardHttpResponse {
             super(200, EStandardHttpStatus.GREEN, "ok");
         }
 
-        public SuccessfulResponse(ObjectNode data) {
+        public SuccessfulResponse(JsonObject data) {
             super(200, EStandardHttpStatus.GREEN, "ok", data);
         }
     }

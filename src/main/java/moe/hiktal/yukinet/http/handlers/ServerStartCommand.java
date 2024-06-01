@@ -1,5 +1,6 @@
 package moe.hiktal.yukinet.http.handlers;
 
+import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.util.HttpUtil;
 import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.server.Server;
@@ -21,9 +22,9 @@ public class ServerStartCommand extends AsyncHttpHandler {
     @Override
     public StandardHttpResponse Squawk(StandardHttpRequest req) {
         String regex = req.urlParams.getOrDefault("regex", "^$");
-        List<Server> servers = ServerManager.GetAllServers().stream()
+        List<Server> servers = YukiNet.getServerManager().GetAllServers().stream()
                 .filter(c -> c.getId().matches(regex))
-                .filter(ServerManager.stoppedServers::contains)
+                .filter(YukiNet.getServerManager().getStoppedServers()::contains)
                 .toList();
 
 

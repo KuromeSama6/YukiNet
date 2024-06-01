@@ -29,7 +29,7 @@ public abstract class Command<T> {
         ExecuteInternal((T)params, args);
     }
     public String GetHelpPage() {
-        FileConfiguration commands = YukiNet.commands;
+        FileConfiguration commands = YukiNet.getCommands();
         if (!commands.contains(label)) return "(No help for %s)".formatted(label);
 
         ConfigurationSection cfg = commands.getConfigurationSection(label);

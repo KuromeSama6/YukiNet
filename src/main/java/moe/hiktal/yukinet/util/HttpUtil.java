@@ -1,8 +1,7 @@
 package moe.hiktal.yukinet.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.http.EndpointHttpResponse;
 import moe.hiktal.yukinet.server.Server;
@@ -43,15 +42,14 @@ public class HttpUtil {
         });
     }
 
-    public static ObjectNode GeneratedServerOperationResult(Iterable<Server> servers) {
-        ObjectMapper mapper = new ObjectMapper();
-        ObjectNode ret = mapper.createObjectNode();
-        ArrayNode arr = mapper.createArrayNode();
+    public static JsonObject GeneratedServerOperationResult(Iterable<Server> servers) {
+        JsonObject ret = new JsonObject();
+        JsonArray arr = new JsonArray();
 
         for (Server server : servers) arr.add(server.getId());
 
-        ret.set("affected", arr);
-        ret.put("count", arr.size());
+        ret.add("affected", arr);
+        ret.addProperty("count", arr.size());
 
         return ret;
     }

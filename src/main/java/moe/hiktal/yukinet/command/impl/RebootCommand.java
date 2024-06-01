@@ -5,9 +5,8 @@ import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.command.Command;
 import moe.hiktal.yukinet.command.CommandHandler;
 import moe.hiktal.yukinet.command.validation.PositiveIntegerValidator;
-import moe.hiktal.yukinet.service.Console;
 import moe.hiktal.yukinet.server.Server;
-import moe.hiktal.yukinet.server.ServerManager;
+import moe.hiktal.yukinet.service.Console;
 
 import java.io.IOException;
 import java.util.List;
@@ -15,10 +14,10 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 @CommandHandler
-public class ShutdownCommand extends Command<ShutdownCommand.Params> {
-    private Timer shutdownTimer;
-    public ShutdownCommand() {
-        super("shutdown", "stop");
+public class RebootCommand extends Command<RebootCommand.Params> {
+    private Timer timer;
+    public RebootCommand() {
+        super("reboot", "restart");
     }
 
     @Override
@@ -29,23 +28,23 @@ public class ShutdownCommand extends Command<ShutdownCommand.Params> {
         }
 
         if (params.cancel) {
-            if (shutdownTimer != null) {
-                shutdownTimer.cancel();
-                shutdownTimer = null;
+            if (timer != null) {
+                timer.cancel();
+                timer = null;
                 GetLogger().info("Cancelled");
             } else GetLogger().info("Not shutting down");
             return;
         }
 
-        if (shutdownTimer != null || YukiNet.getServerManager().isShuttingDown()) {
+        if (timer != null || YukiNet.getServerManager().isShuttingDown()) {
             GetLogger().info("Already shutting down");
             return;
         }
 
         if (params.now || params.time <= 0) Shutdown();
         else {
-            shutdownTimer = new Timer();
-            shutdownTimer.schedule(new TimerTask() {
+            timer = new Timer();
+            timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
                     try {
@@ -69,29 +68,29 @@ public class ShutdownCommand extends Command<ShutdownCommand.Params> {
     private void Shutdown() throws IOException {
         if (YukiNet.getServerManager().isShuttingDown()) return;
         Console.getInstance().setUserInterruptionWarned(true);
-        YukiNet.getInstance().Shutdown();
+        YukiNet.getInstance().Reboot();
     }
 
     public static class Params {
         @Parameter(
                 names = "-now",
-                description = "Signals YukiNet to stop immediately."
+                description = "Signals YukiNet to reboot immediately."
         )
         private boolean now;
         @Parameter(
                 names = "-t",
-                description = "Signals YukiNet to stop after the specified amount of seconds.",
+                description = "Signals YukiNet to reboot after the specified amount of seconds.",
                 validateWith = PositiveIntegerValidator.class
         )
         private int time = 60;
         @Parameter(
                 names = "--cancel",
-                description = "Cancels the current shutdown attempt."
+                description = "Cancels the current reboot attempt."
         )
         private boolean cancel;
         @Parameter(
                 names = "-msg",
-                description = "Broadcasts a message to all players before shutting down."
+                description = "Broadcasts a message to all players before rebooting."
         )
         private String message;
 

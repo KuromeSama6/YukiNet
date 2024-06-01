@@ -1,6 +1,5 @@
 package moe.hiktal.yukinet.http.handlers.internal;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.server.impl.Deployment;
@@ -15,19 +14,19 @@ public class ClearanceRequestHandler extends AsyncHttpHandler {
     @NotNull
     @Override
     public StandardHttpResponse Squawk(StandardHttpRequest req) {
-        final String ip = req.body.get("ip").textValue();
-        final int port = req.body.get("port").intValue();
-        Deployment deployment = new Deployment(ip, port, (ArrayNode)req.body.get("servers"));
-        boolean suc = ServerManager.AddDeployment(deployment);
+        final String ip = req.body.get("ip").getAsString();
+        final int port = req.body.get("port").getAsInt();
+        Deployment deployment = new Deployment(ip, port, req.body.get("servers").getAsJsonArray());
+        boolean suc = YukiNet.getServerManager().AddDeployment(deployment);
 
         if (suc) {
-            ++ServerManager.receivedRemote;
-            YukiNet.getLogger().info("Received clearance from %s:%s (%s/%s).".formatted(ip, port, ServerManager.receivedRemote, YukiNet.expectDeployments));
+            YukiNet.getServerManager().setReceivedRemote(YukiNet.getServerManager().getReceivedRemote() + 1);
+            YukiNet.getLogger().info("Received clearance from %s:%s (%s/%s).".formatted(ip, port, YukiNet.getServerManager().getReceivedRemote(), YukiNet.getInstance().getExpectDeployments()));
 
-            if (ServerManager.receivedRemote == YukiNet.expectDeployments) {
+            if (YukiNet.getServerManager().getReceivedRemote() == YukiNet.getInstance().getExpectDeployments()) {
                 YukiNet.getLogger().info("All remotes received. Starting servers...");
                 try {
-                    ServerManager.RewriteBungeecordConfig();
+                    YukiNet.getServerManager().RewriteBungeecordConfig();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }

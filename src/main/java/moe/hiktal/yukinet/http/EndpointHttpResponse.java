@@ -1,13 +1,12 @@
 package moe.hiktal.yukinet.http;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 public class EndpointHttpResponse {
     public String originalContent;
     public int code;
-    public JsonNode content;
+    public JsonObject content;
     public boolean sent;
     public boolean suc;
     public String msg, msgTranslated;
@@ -18,16 +17,11 @@ public class EndpointHttpResponse {
         this.originalContent = msg;
         this.code = code;
 
-        try {
-            content = new ObjectMapper().readTree(msg);
+        content = new Gson().fromJson(msg, JsonObject.class);
 
-            suc = !content.has("status") || content.get("status").textValue().equalsIgnoreCase("green");
-            this.msg = content.get("message").textValue();
-            msgTranslated = content.has("message_cn") ? content.get("message_cn").textValue() : msg;
-
-        } catch (JsonProcessingException e) {
-            content = null;
-        }
+        suc = !content.has("status") || content.get("status").getAsString().equalsIgnoreCase("green");
+        this.msg = content.get("message").getAsString();
+        msgTranslated = content.has("message_cn") ? content.get("message_cn").getAsString() : msg;
 
     }
 

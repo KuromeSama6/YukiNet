@@ -77,7 +77,7 @@ public class LocalServer extends Server {
         ret.set("port", port);
         ret.set("is-static", isStatic);
 
-        ret.set("global-cfg", YukiNet.cfg);
+        ret.set("global-cfg", YukiNet.getCfg());
 
         return ret;
     }
@@ -87,17 +87,17 @@ public class LocalServer extends Server {
 
     @Override
     public void Start(Consumer<Boolean> callback) throws IOException {
-        ServerManager.stoppedServers.remove(this);
+        YukiNet.getServerManager().getStoppedServers().remove(this);
 
         if (!isFirstStart && !isStatic) {
             // repull from template
-            ServerManager.CollectAndCopyFiles(groupId, YukiNet.cwd, cwd);
+            YukiNet.getServerManager().CollectAndCopyFiles(groupId, YukiNet.CWD, cwd);
         }
         isFirstStart = false;
 
         // random copy
         if (config.getBoolean("randomCopy", false)) {
-            File randomDir = new File(YukiNet.cwd + String.format("/template/%s/.random", groupId));
+            File randomDir = new File(YukiNet.CWD + String.format("/template/%s/.random", groupId));
             if (!randomDir.exists()) YukiNet.getLogger().warn("The .random directory does not exist under %s!".formatted(randomDir));
             else {
                 List<File> files = Arrays.stream(Objects.requireNonNull(randomDir.listFiles()))
@@ -228,7 +228,7 @@ public class LocalServer extends Server {
 
     @Override
     public void Stop() throws IOException {
-        ServerManager.stoppedServers.add(this);
+        YukiNet.getServerManager().getStoppedServers().add(this);
         if (status.IsRunning()) Interrupt();
     }
 
@@ -238,16 +238,13 @@ public class LocalServer extends Server {
     @Override
     public void Interrupt(boolean force) throws IOException {
         for (int i = 0; i <(force ? 2 : 1); i++) {
-            if (SystemUtils.IS_OS_WINDOWS) Runtime.getRuntime().exec(new String[] {"taskkill", "/F", "/PID", Long.toString(proc.pid())});
-            else Runtime.getRuntime().exec(new String[] {
-                    "screen", "-S", GetScreenSessionName(), "-X", "stuff", "\"^C\""
-            });
+            SendInput("^C");
         }
 
         status = EServerStatus.STOPPED;
 
-        if (ServerManager.AllowsServerAutoRestart(this)) {
-            ServerManager.restartQueue.add(this);
+        if (YukiNet.getServerManager().AllowsServerAutoRestart(this)) {
+            YukiNet.getServerManager().getRestartQueue().add(this);
         }
 
         if (force && !SystemUtils.IS_OS_WINDOWS) Runtime.getRuntime().exec(new String[] {"kill", "-SIGKILL", "%s".formatted(getPid())});

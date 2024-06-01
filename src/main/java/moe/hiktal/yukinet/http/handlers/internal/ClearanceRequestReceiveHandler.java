@@ -15,7 +15,7 @@ public class ClearanceRequestReceiveHandler extends AsyncHttpHandler {
     public StandardHttpResponse Squawk(StandardHttpRequest req) {
         YukiNet.getLogger().info("Clearance received, clear to start.");
         try {
-            ServerManager.StartAllServers();
+            YukiNet.getServerManager().StartAllServers();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

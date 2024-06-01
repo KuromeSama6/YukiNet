@@ -1,0 +1,11 @@
+# Name of the job
+_example:
+  # The CRON time pattern for when this job should be executed.
+  time: 0 15 10 * * ?
+  # A list of commands to execute. Commands are always executed synchronously in their
+  # respective order, and an exception will interrupt command execution.
+  # This is equivalent to running the command on the console itself,
+  # so any context is retained. If you do not want the context to persist,
+  # you must add "ctx -clr" in the command list.
+  cmd:
+    - reboot -h 60 -msg "The server is about to restart in 60 seconds"

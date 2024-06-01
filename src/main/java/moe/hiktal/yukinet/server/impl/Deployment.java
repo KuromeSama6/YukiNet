@@ -1,6 +1,9 @@
 package moe.hiktal.yukinet.server.impl;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.server.Server;
 import moe.hiktal.yukinet.util.HttpUtil;
 import moe.hiktal.yukinet.server.ServerManager;
@@ -13,15 +16,16 @@ public class Deployment {
     public final int port;
     public List<Server> servers = new ArrayList<>();
 
-    public Deployment(String ip, int port, ArrayNode json) {
+    public Deployment(String ip, int port, JsonArray json) {
         this.ip = ip;
         this.port = port;
 
-        json.iterator().forEachRemaining(node -> {
-            Server server = new RemoteServer(this, node.get("id").textValue(), node.get("port").intValue());
+        for (JsonElement ele : json) {
+            JsonObject node = ele.getAsJsonObject();
+            Server server = new RemoteServer(this, node.get("id").getAsString(), node.get("port").getAsInt());
             servers.add(server);
-            ServerManager.dynamicServers.add(server);
-        });
+            YukiNet.getServerManager().getDynamicServers().add(server);
+        }
 
     }
 
