@@ -3,7 +3,6 @@ package moe.hiktal.yukinet.http.handlers;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import moe.hiktal.yukinet.YukiNet;
-import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.server.Server;
 import moe.hiktal.yukinet.http.AsyncHttpHandler;
 import moe.hiktal.yukinet.http.StandardHttpRequest;
@@ -21,7 +20,7 @@ public class RegexListCommand extends AsyncHttpHandler {
     @Override
     public StandardHttpResponse Squawk(StandardHttpRequest req) {
         String regex = req.urlParams.getOrDefault("regex", ".*");
-        List<Server> servers = YukiNet.getServerManager().GetAllServers().stream()
+        List<Server> servers = YukiNet.getServerManager().GetAllLocalServers().stream()
                 .filter(c -> c.getId().matches(regex))
                 .toList();
         

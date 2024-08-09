@@ -1,5 +1,6 @@
 package moe.hiktal.yukinet.server.impl;
 
+import moe.hiktal.yukinet.server.Deployment;
 import moe.hiktal.yukinet.server.Server;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -8,7 +9,6 @@ import java.io.IOException;
 
 public class RemoteServer extends Server {
     private boolean alive;
-    private final Deployment deployment;
 
     public RemoteServer(Deployment deployment, String id, int port) {
         this.id = id;

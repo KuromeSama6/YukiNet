@@ -7,6 +7,7 @@ import moe.hiktal.yukinet.enums.EStandardHttpStatus;
 import moe.hiktal.yukinet.http.handlers.*;
 import moe.hiktal.yukinet.http.handlers.internal.ClearanceRequestHandler;
 import moe.hiktal.yukinet.http.handlers.internal.ClearanceRequestReceiveHandler;
+import moe.hiktal.yukinet.http.handlers.internal.ServiceShutdownHandler;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -40,6 +41,7 @@ public class HttpHost {
 
             server.createContext("/internal/start/clearance", new ClearanceRequestHandler());
             server.createContext("/internal/start/clearance/copy", new ClearanceRequestReceiveHandler());
+            server.createContext("/internal/shutdown", new ServiceShutdownHandler());
 
             RegisterLightweightHandlers();
             server.bind(new InetSocketAddress(port), 0);

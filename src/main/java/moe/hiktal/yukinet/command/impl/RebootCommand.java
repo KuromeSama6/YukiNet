@@ -37,7 +37,7 @@ public class RebootCommand extends Command<RebootCommand.Params> {
         }
 
         if (timer != null || YukiNet.getServerManager().isShuttingDown()) {
-            GetLogger().info("Already shutting down");
+            GetLogger().info("Already rebooting");
             return;
         }
 
@@ -67,6 +67,10 @@ public class RebootCommand extends Command<RebootCommand.Params> {
 
     private void Shutdown() throws IOException {
         if (YukiNet.getServerManager().isShuttingDown()) return;
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
         Console.getInstance().setUserInterruptionWarned(true);
         YukiNet.getInstance().Reboot();
     }

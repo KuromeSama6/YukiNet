@@ -1,10 +1,11 @@
-package moe.hiktal.yukinet.server.impl;
+package moe.hiktal.yukinet.server;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.server.Server;
+import moe.hiktal.yukinet.server.impl.RemoteServer;
 import moe.hiktal.yukinet.util.HttpUtil;
 import moe.hiktal.yukinet.server.ServerManager;
 
@@ -35,6 +36,12 @@ public class Deployment {
 
     public void SendStartClearance() {
         HttpUtil.HttpPostSync("http://%s/internal/start/clearance/copy".formatted(GetPrettyAddress()), "{}");
+    }
+
+    public void NotifyShutdown(boolean reboot) {
+        JsonObject body = new JsonObject();
+        body.addProperty("reboot", reboot);
+        HttpUtil.HttpPostSync("http://%s/internal/shutdown".formatted(GetPrettyAddress()), body.toString());
     }
 
 }

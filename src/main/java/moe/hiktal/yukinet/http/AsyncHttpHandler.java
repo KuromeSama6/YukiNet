@@ -61,7 +61,7 @@ public abstract class AsyncHttpHandler implements HttpHandler {
      * @param req request.
      * @return response.
      */
-    public abstract @NotNull StandardHttpResponse Squawk(StandardHttpRequest req);
+    public abstract @NotNull StandardHttpResponse Squawk(StandardHttpRequest req) throws Exception;
 
     public static HashMap<String, String> ExtractUrlParams(String templateUrl, URI url) {
         HashMap<String, String> ret = new HashMap<>();

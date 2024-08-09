@@ -2,7 +2,6 @@ package moe.hiktal.yukinet.http.handlers;
 
 import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.util.HttpUtil;
-import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.server.Server;
 import moe.hiktal.yukinet.enums.EStandardHttpStatus;
 import moe.hiktal.yukinet.http.AsyncHttpHandler;
@@ -24,7 +23,7 @@ public class ServerRebootCommand extends AsyncHttpHandler {
         if (!YukiNet.getServerManager().AllowingServerReboot()) return new StandardHttpResponse(EStandardHttpStatus.RED, "auto reboot not enabled; use /stop/<REGEX> instead.");
 
         String regex = req.urlParams.getOrDefault("regex", "^$");
-        List<Server> servers = YukiNet.getServerManager().GetAllServers().stream()
+        List<Server> servers = YukiNet.getServerManager().GetAllLocalServers().stream()
                 .filter(c -> c.getId().matches(regex))
                 .filter(c -> c.getStatus().IsRunning())
                 .filter(c -> !c.isStatic())

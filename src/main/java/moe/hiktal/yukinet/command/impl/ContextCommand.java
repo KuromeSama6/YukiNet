@@ -6,7 +6,6 @@ import moe.hiktal.yukinet.YukiNet;
 import moe.hiktal.yukinet.command.Command;
 import moe.hiktal.yukinet.command.CommandHandler;
 import moe.hiktal.yukinet.server.Server;
-import moe.hiktal.yukinet.server.ServerManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +43,7 @@ public class ContextCommand extends Command<ContextCommand.Params> {
         // select ccontexts
         for (String regex : params.ids) {
             context.addAll(
-                    YukiNet.getServerManager().GetAllServers().stream()
+                    YukiNet.getServerManager().GetAllLocalServers().stream()
                             .filter(c -> c.getId().matches(regex))
                             .filter(c -> !context.contains(c))
                             .toList()

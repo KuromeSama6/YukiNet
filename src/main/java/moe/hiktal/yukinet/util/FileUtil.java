@@ -92,7 +92,7 @@ public class FileUtil {
 
     public static void RecursiveCopy(FileProvider provider, String path, File target) throws IOException {
         IFile source = provider.Acquire(path);
-        System.out.println("copy: %s -> %s (%s); ".formatted(path, target, source.getClass().getSimpleName()));
+//        System.out.println("copy: %s -> %s (%s); ".formatted(path, target, source.getClass().getSimpleName()));
 
         if (source.IsDirectory()) {
             if (!target.exists()) target.mkdir();

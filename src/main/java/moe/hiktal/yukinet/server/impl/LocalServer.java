@@ -237,9 +237,7 @@ public class LocalServer extends Server {
 
     @Override
     public void Interrupt(boolean force) throws IOException {
-        for (int i = 0; i <(force ? 2 : 1); i++) {
-            SendInput("^C");
-        }
+        SendInput("^C", true);
 
         status = EServerStatus.STOPPED;
 

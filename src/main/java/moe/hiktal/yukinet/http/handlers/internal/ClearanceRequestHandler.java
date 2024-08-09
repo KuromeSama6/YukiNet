@@ -1,8 +1,7 @@
 package moe.hiktal.yukinet.http.handlers.internal;
 
 import moe.hiktal.yukinet.YukiNet;
-import moe.hiktal.yukinet.server.ServerManager;
-import moe.hiktal.yukinet.server.impl.Deployment;
+import moe.hiktal.yukinet.server.Deployment;
 import moe.hiktal.yukinet.http.AsyncHttpHandler;
 import moe.hiktal.yukinet.http.StandardHttpRequest;
 import moe.hiktal.yukinet.http.StandardHttpResponse;

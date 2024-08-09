@@ -2,6 +2,7 @@ isDeployment: false
 proxyDir: /static/proxy
 restartServersOnStop: true
 serverStartInterval: 30000
+rebootDelay: 10000
 
 http:
   this:

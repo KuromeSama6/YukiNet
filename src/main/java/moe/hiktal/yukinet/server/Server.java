@@ -31,6 +31,8 @@ public abstract class Server {
     protected int port;
     @Getter
     protected int pid;
+    @Getter
+    protected Deployment deployment;
     protected Timer keepAliveTimer = new Timer();
     protected ProcessHandle procHandle;
 
@@ -65,7 +67,11 @@ public abstract class Server {
     public abstract void Interrupt(boolean force) throws IOException;
 
     public void SendInput(String input) throws IOException {
-        if (status != EServerStatus.RUNNING) return;
+        SendInput(input, false);
+    }
+
+    public void SendInput(String input, boolean force) throws IOException {
+        if (status != EServerStatus.RUNNING && !force) return;
         Runtime.getRuntime().exec(new String[] {
                 "screen", "-S", GetScreenSessionName(), "-X", "stuff", "%s\n".formatted(input)
         });

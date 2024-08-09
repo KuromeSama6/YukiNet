@@ -1,5 +1,6 @@
 package moe.hiktal.yukinet;
 
+import com.google.gson.JsonObject;
 import lombok.Getter;
 import moe.hiktal.yukinet.http.HttpHost;
 import moe.hiktal.yukinet.service.Console;
@@ -8,6 +9,7 @@ import moe.hiktal.yukinet.server.ServerManager;
 import moe.hiktal.yukinet.service.FileServer;
 import moe.hiktal.yukinet.service.JobScheduler;
 import moe.hiktal.yukinet.util.FileUtil;
+import moe.hiktal.yukinet.util.HttpUtil;
 import moe.hiktal.yukinet.util.Util;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,6 +23,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public class YukiNet {
     public static final String CWD_STRING = Paths.get("").toAbsolutePath().normalize().toString();
@@ -123,6 +127,12 @@ public class YukiNet {
         int port = cfg.getInt("http.this.port");
         httpHost = new HttpHost(port);
 
+        // send info to master
+        if (isDeployment) {
+            logger.info("Sending deployment info to master");
+
+        }
+
         // more directories
         logger.info("Clearing /live directory for new deployment.");
         FileUtil.MkdirSoft(new File(CWD + "/live").toPath());
@@ -146,17 +156,9 @@ public class YukiNet {
         StartBoot();
     }
 
-    private void StartBoot() throws IOException{
-        logger.info("Starting deployment workflow.");
-
-        logger.info("");
-        logger.info("Send a GET request to http://%s:%s/help for help on commands.".formatted(cfg.getString("http.this.ip"), cfg.getInt("http.this.port")));
-        logger.info("For example:");
-        logger.info("   $ curl %s:%s/help".formatted(cfg.getString("http.this.ip"), cfg.getInt("http.this.port")));
-        logger.info("");
-
+    private void StartBoot() throws IOException {
+        logger.info("Starting deployment.");
         Start();
-
     }
 
     public void Start() throws IOException {
@@ -168,18 +170,31 @@ public class YukiNet {
     }
 
     public void Shutdown() throws IOException {
-        if (serverManager != null) serverManager.Shutdown();
+        if (serverManager != null) {
+            serverManager.getDeployments().forEach(c -> c.NotifyShutdown(false));
+            serverManager.Shutdown();
+        }
         System.exit(0);
     }
 
     public void Reboot() throws IOException {
         if (serverManager != null) {
+            serverManager.getDeployments().forEach(c -> c.NotifyShutdown(true));
             serverManager.Shutdown();
             serverManager = null;
         }
-        logger.info("Creating new ServerManager instance and rebooting...");
 
-        StartBoot();
+        logger.info("Creating new ServerManager instance and rebooting...");
+        serverManager = new ServerManager();
+
+        int duration = cfg.getInt("rebootDelay", 10000);
+        logger.info("Systems going back up in %d".formatted(duration));
+        try {
+            Thread.sleep(duration);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        serverManager.Start();
     }
 
 }

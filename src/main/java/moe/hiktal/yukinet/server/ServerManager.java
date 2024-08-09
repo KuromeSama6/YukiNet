@@ -5,9 +5,7 @@ import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
 import moe.hiktal.yukinet.YukiNet;
-import moe.hiktal.yukinet.io.FileDownloader;
 import moe.hiktal.yukinet.io.FileProvider;
-import moe.hiktal.yukinet.server.impl.Deployment;
 import moe.hiktal.yukinet.server.impl.LocalServer;
 import moe.hiktal.yukinet.http.EndpointHttpResponse;
 import moe.hiktal.yukinet.util.FileUtil;
@@ -17,7 +15,10 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.security.CodeSource;
 import java.text.DecimalFormat;
 import java.util.*;
 
@@ -27,6 +28,7 @@ public class ServerManager {
     @Getter
     private Server proxy;
     private List<Server> staticServers = new ArrayList<>();
+    @Getter
     private List<Deployment> deployments = new ArrayList<>();
     @Getter
     private List<Server> dynamicServers = new ArrayList<>();
@@ -40,6 +42,12 @@ public class ServerManager {
     private FileProvider fileProvider;
 
     public List<Server> GetAllServers() {
+        List<Server> ret = GetAllLocalServers();
+        for (Deployment deployment : deployments) ret.addAll(deployment.servers);
+        return ret;
+    }
+
+    public List<Server> GetAllLocalServers() {
         List<Server> ret = new ArrayList<>();
         ret.addAll(staticServers);
         ret.addAll(dynamicServers);
@@ -76,7 +84,7 @@ public class ServerManager {
             ret.addProperty("port", thisPort);
 
             JsonArray servers = new JsonArray();
-            for (Server server : GetAllServers()) {
+            for (Server server : GetAllLocalServers()) {
                 JsonObject pth = new JsonObject();
                 pth.addProperty("id", server.getId());
                 pth.addProperty("port", server.getPort());
@@ -120,6 +128,7 @@ public class ServerManager {
         YukiNet.getLogger().info("Copying templates...");
 
         File[] toCopy = Objects.requireNonNull(new File(cwd + "/template").listFiles());
+        Arrays.sort(toCopy);
 
         for (File dir : toCopy) {
             if (!dir.isDirectory() || dir.getName().startsWith(".")) continue;
@@ -155,7 +164,7 @@ public class ServerManager {
     }
 
     public boolean AllowsServerAutoRestart(Server server) {
-        return !isShuttingDown && !stoppedServers.contains(server) && GetAllServers().contains(server) &&YukiNet.getCfg().getBoolean("restartServersOnStop");
+        return !isShuttingDown && !stoppedServers.contains(server) && GetAllLocalServers().contains(server) &&YukiNet.getCfg().getBoolean("restartServersOnStop");
     }
 
     public void RewriteBungeecordConfig() throws IOException{
@@ -187,7 +196,7 @@ public class ServerManager {
         config.set("servers", null);
 
         List<String> priorities = new ArrayList<>();
-        for (Server server : GetAllServers()) {
+        for (Server server : GetAllLocalServers()) {
             WriteOneServer(config, server);
             if (server.getConfig() == null || server.getConfig().getBoolean("writePriorities")) priorities.add(server.getId());
         }
@@ -203,9 +212,36 @@ public class ServerManager {
 
         proxy = new LocalServer("__proxy", 0, 0, true);
         proxy.SetProxy(cwd);
+
+        // copy jar
+        CodeSource codeSource = YukiNet.class.getProtectionDomain().getCodeSource();
+        try {
+            File jarFile = new File(codeSource.getLocation().toURI().getPath());
+            File target = new File(cwd + "/plugins/" + jarFile.getName());
+            Files.copy(jarFile.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
+
         proxy.Start(suc -> {
             if (suc) {
                 YukiNet.getLogger().info("Proxy start success. Starting servers...");
+                YukiNet.getLogger().info("Dynamically writing servers.");
+
+                for (Server server : GetAllServers()) {
+                    try {
+                        YukiNet.getLogger().info("Add %s [%s]".formatted(server.getId(), server.getClass().getSimpleName()));
+                        proxy.SendInput("addserver %s %s %d".formatted(
+                                server.getId(),
+                                server.getDeployment() == null ? "127.0.0.1" : server.getDeployment().ip,
+                                server.getPort()
+                        ));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
                 try {
 
                     if (receivedRemote > 0) {
@@ -225,7 +261,7 @@ public class ServerManager {
 
     public void StartAllServers() throws IOException{
         isRunning = true;
-        final List<Server> servers = GetAllServers().stream().filter(c -> c instanceof LocalServer).toList();
+        final List<Server> servers = GetAllLocalServers().stream().filter(c -> c instanceof LocalServer).toList();
         final DecimalFormat formatter = new DecimalFormat("#.##");
         int delay =YukiNet.getCfg().getInt("serverStartInterval", 30000);
         final Timer timer = new Timer();
@@ -320,7 +356,6 @@ public class ServerManager {
     }
 
     public boolean AddDeployment(Deployment deployment) {
-
         deployments.add(deployment);
         return true;
     }
@@ -332,30 +367,38 @@ public class ServerManager {
 
         if (isRunning) {
             if (proxy != null) proxy.Interrupt();
-
             for (Server server : staticServers) server.Interrupt();
             for (Server server : dynamicServers) server.Interrupt();
 
             YukiNet.getLogger().info("Allowing 10 seconds for servers to shut down themselves before forcefully shutting down - DO NOT SEND ^C");
             YukiNet.getLogger().info("DO NOT SEND ^C!!!!!!");
 
-            int counter = 0;
-            while (counter < 10000) {
-                counter += 100;
+            for (int i = 0; i < 10; i++) {
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                 }
-                if (GetAllServers().stream().noneMatch(Server::IsAlive)) break;
+                if (GetAllLocalServers().stream().noneMatch(Server::IsAlive)) break;
             }
 
-            List<Server> survivers = GetAllServers().stream().filter(Server::IsAlive).toList();
+            YukiNet.getLogger().info("Initial shutdown finished.");
+
+            List<Server> survivers = GetAllLocalServers().stream().filter(Server::IsAlive).toList();
+            if (proxy != null && proxy.IsAlive()) proxy.Interrupt(true);
             if (survivers.size() > 0) {
                 YukiNet.getLogger().warn("Killing %s survivers...".formatted(survivers.size()));
                 for (Server server : survivers) {
                     server.Interrupt(true);
                 }
             }
+        }
+
+        YukiNet.getLogger().info("Wiping dead screens...");
+        Process process = new ProcessBuilder("screen", "-wipe").start();
+        try {
+            process.waitFor();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
         YukiNet.getLogger().info("ServerManager shutdown complete.");
